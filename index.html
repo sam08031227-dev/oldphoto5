@@ -1,0 +1,526 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>猜猜我是誰 - 團體互動遊戲</title>
+    
+    <!-- 引入 Tailwind CSS (樣式) -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- 引入 React 和 ReactDOM (核心框架) -->
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    
+    <!-- 引入 Babel (讓瀏覽器看懂 JSX) -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+    <style>
+        /* 自定義動畫 */
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .animate-fade-in-up {
+            animation: fadeIn 0.5s ease-out forwards;
+        }
+        body {
+            font-family: "Microsoft JhengHei", "Heiti TC", sans-serif;
+            background-color: #f3f4f6;
+        }
+        /* YouTube Player 最小化樣式過渡 */
+        .youtube-player-container {
+            transition: all 0.3s ease-in-out;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+        }
+        /* 最小化時的尺寸 */
+        .youtube-player-minimized {
+            width: 80px;
+            height: 60px;
+        }
+        /* 正常/最大化時的尺寸 */
+        .youtube-player-maximized {
+            width: 90vw; /* 為了響應式設計，使用 vw */
+            max-width: 400px;
+            height: calc(90vw * 0.5625); /* 16:9 比例 */
+            max-height: 225px;
+        }
+        /* 桌面版尺寸修正 */
+        @media (min-width: 640px) {
+            .youtube-player-maximized {
+                width: 400px;
+                height: 225px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect } = React;
+
+        // --- 圖示組件 ---
+        const IconBase = ({ size = 24, className = "", children }) => (
+            <svg 
+                xmlns="http://www.w3.org/2000/svg" 
+                width={size} 
+                height={size} 
+                viewBox="0 0 24 24" 
+                fill="none" 
+                stroke="currentColor" 
+                strokeWidth="2" 
+                strokeLinecap="round" 
+                strokeLinejoin="round" 
+                className={className}
+            >
+                {children}
+            </svg>
+        );
+
+        const HelpCircle = (props) => (
+            <IconBase {...props}><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><path d="M12 17h.01"/></IconBase>
+        );
+        const ImageIcon = (props) => (
+            <IconBase {...props}><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></IconBase>
+        );
+        const CheckCircle = (props) => (
+            <IconBase {...props}><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></IconBase>
+        );
+        const ArrowRight = (props) => (
+            <IconBase {...props}><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></IconBase>
+        );
+        const RotateCcw = (props) => (
+            <IconBase {...props}><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 12"/><path d="M3 3v9h9"/></IconBase>
+        );
+        const Eye = (props) => (
+            <IconBase {...props}><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></IconBase>
+        );
+        const Play = (props) => (
+            <IconBase {...props}><polygon points="5 3 19 12 5 21 5 3"/></IconBase>
+        );
+        const Star = (props) => (
+            <IconBase {...props}><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></IconBase>
+        );
+        const Maximize = (props) => (
+            <IconBase {...props}><path d="M8 3H5a2 2 0 0 0-2 2v3"/><path d="M21 8V5a2 2 0 0 0-2-2h-3"/><path d="M3 16v3a2 2 0 0 0 2 2h3"/><path d="M16 21h3a2 2 0 0 0 2-2v-3"/></IconBase>
+        );
+        const Minimize = (props) => (
+            <IconBase {...props}><path d="M8 3v3a2 2 0 0 1-2 2H3"/><path d="M21 8h-3a2 2 0 0 1-2-2V3"/><path d="M3 16h3a2 2 0 0 1 2 2v3"/><path d="M16 21v-3a2 2 0 0 1 2-2h3"/></IconBase>
+        );
+        const Volume2 = (props) => (
+            <IconBase {...props}><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/></IconBase>
+        );
+        const XIcon = (props) => (
+             <IconBase {...props}><path d="M18 6 6 18"/><path d="m6 6 12 12"/></IconBase>
+        );
+        const YoutubeIcon = (props) => (
+            <IconBase {...props} fill="red" stroke="white"><path d="M2.5 17.5V6.5c0-.6.4-1.1 1-1.1h17c.6 0 1 .5 1 1.1v11c0 .6-.4 1.1-1 1.1h-17c-.6 0-1-.5-1-1.1Z"/><path d="m10 15 5-3-5-3v6Z"/></IconBase>
+        );
+
+
+        // --- YouTube 播放器組件 ---
+        const YouTubePlayer = ({ videoId, title, isMinimized, setIsMinimized, setIsPlaying }) => {
+            // 由於設置了 autoplay=1，影片會在 iframe 載入後自動播放
+            const embedUrl = `https://www.youtube.com/embed/${videoId}?autoplay=1&controls=1&enablejsapi=1&modestbranding=1&rel=0`;
+
+            return (
+                <div 
+                    className={`Youtubeer-container fixed bottom-4 right-4 z-50 rounded-xl overflow-hidden bg-gray-800 ${
+                        isMinimized ? 'youtube-player-minimized' : 'youtube-player-maximized'
+                    } ${
+                        isMinimized ? 'hover:scale-105 cursor-pointer' : ''
+                    }`}
+                    // 點擊最小化播放器時，將其展開
+                    onClick={() => isMinimized && setIsMinimized(false)}
+                >
+                    {isMinimized ? (
+                        // 最小化視窗
+                        <div className="w-full h-full flex items-center justify-center bg-gray-900/90 text-white relative">
+                            <Volume2 size={32} className="text-red-500 animate-pulse" />
+                            <button
+                                onClick={(e) => {
+                                    e.stopPropagation(); // 阻止展開點擊事件
+                                    setIsMinimized(false);
+                                }}
+                                className="absolute top-0 right-0 p-1 text-white bg-black/50 rounded-bl-lg hover:bg-black"
+                                title="展開"
+                            >
+                                <Maximize size={16} />
+                            </button>
+                        </div>
+                    ) : (
+                        // 展開視窗
+                        <div className="w-full h-full relative">
+                            {/* 嵌入 YouTube 播放器 */}
+                            <iframe
+                                width="100%"
+                                height="100%"
+                                src={embedUrl}
+                                frameBorder="0"
+                                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                                allowFullScreen
+                                title={title}
+                            ></iframe>
+                            <div className="absolute top-0 right-0 flex gap-1 p-2">
+                                {/* 縮小按鈕 */}
+                                <button
+                                    onClick={() => setIsMinimized(true)}
+                                    className="p-1.5 rounded-full bg-black/60 text-white hover:bg-black/80 transition"
+                                    title="縮小"
+                                >
+                                    <Minimize size={18} />
+                                </button>
+                                {/* 關閉按鈕 */}
+                                <button
+                                    onClick={() => setIsPlaying(false)}
+                                    className="p-1.5 rounded-full bg-red-600/80 text-white hover:bg-red-700 transition"
+                                    title="關閉影片"
+                                >
+                                    <XIcon size={18} />
+                                </button>
+                            </div>
+                            <div className="absolute bottom-0 left-0 bg-black/50 text-white text-xs px-2 py-0.5 max-w-full truncate rounded-tr-lg">
+                                {title}
+                            </div>
+                        </div>
+                    )}
+                </div>
+            );
+        };
+
+
+        // --- 主程式邏輯 ---
+        const GuessWhoGame = () => {
+            // 遊戲資料設定 (使用佔位圖作為範例)
+            const gameData = [
+                {
+                    id: 1,
+                    name: "金城武",
+                    photos: [
+                        { url: "https://placehold.co/600x400/1e293b/ffffff?text=金城武+-+過去照片(1)", label: "題目：過去照片 (1)" },
+                        { url: "https://placehold.co/600x400/334155/ffffff?text=金城武+-+過去照片(2)", label: "提示 1：過去照片 (2)" },
+                        { url: "https://placehold.co/600x400/475569/ffffff?text=金城武+-+現在照片", label: "提示 2：現在照片" }
+                    ]
+                },
+                {
+                    id: 2,
+                    name: "楊林",
+                    photos: [
+                        { url: "https://placehold.co/600x400/1e293b/ffffff?text=楊林+-+過去照片(1)", label: "題目：過去照片 (1)" },
+                        { url: "https://placehold.co/600x400/334155/ffffff?text=楊林+-+過去照片(2)", label: "提示 1：過去照片 (2)" },
+                        { url: "https://placehold.co/600x400/475569/ffffff?text=楊林+-+現在照片", label: "提示 2：現在照片" }
+                    ]
+                },
+                {
+                    id: 3,
+                    name: "張晨光",
+                    photos: [
+                        { url: "https://placehold.co/600x400/1e293b/ffffff?text=張晨光+-+過去照片(1)", label: "題目：過去照片 (1)" },
+                        { url: "https://placehold.co/600x400/334155/ffffff?text=張晨光+-+過去照片(2)", label: "提示 1：過去照片 (2)" },
+                        { url: "https://placehold.co/600x400/475569/ffffff?text=張晨光+-+現在照片", label: "提示 2：現在照片" }
+                    ]
+                },
+                // 為了保持程式碼簡潔，只保留三個範例，您可以自行添加更多題目
+            ];
+            
+            // YouTube 影片資訊 (從 user 提供的連結取得)
+            const YOUTUBE_VIDEO_ID = 'r34IHFI-29c';
+            const YOUTUBE_VIDEO_TITLE = 'Japanese R&B｜一聽就愛上的日文歌・快樂就是這麼簡單🎶';
+
+            // 遊戲狀態
+            const [currentRound, setCurrentRound] = useState(0);
+            const [step, setStep] = useState(0); // 0, 1, 2 = 提示階段; 3 = 公佈答案
+            const [gameStatus, setGameStatus] = useState('start'); // 'start', 'playing', 'finished'
+            const [isFullscreen, setIsFullscreen] = useState(false);
+            
+            // 影片播放狀態
+            const [isVideoPlaying, setIsVideoPlaying] = useState(false);
+            const [isVideoMinimized, setIsVideoMinimized] = useState(false); 
+
+            const currentCelebrity = gameData[currentRound];
+
+            // --- 全螢幕功能 ---
+            const toggleFullScreen = () => {
+                if (!document.fullscreenElement) {
+                    document.documentElement.requestFullscreen().catch(err => {
+                        console.error(`Error attempting to enable full-screen mode: ${err.message}`);
+                    });
+                } else {
+                    if (document.exitFullscreen) {
+                        document.exitFullscreen();
+                    }
+                }
+            };
+
+            useEffect(() => {
+                const handleFullscreenChange = () => {
+                    setIsFullscreen(!!document.fullscreenElement);
+                };
+
+                document.addEventListener('fullscreenchange', handleFullscreenChange);
+                return () => {
+                    document.removeEventListener('fullscreenchange', handleFullscreenChange);
+                };
+            }, []);
+
+            // --- 遊戲邏輯 ---
+            const handleStartGame = () => {
+                setGameStatus('playing');
+            };
+            
+            // 播放影片邏輯 (將狀態設為播放中，會觸發 YouTubePlayer 渲染)
+            const handlePlayVideo = () => {
+                setIsVideoPlaying(true);
+                setIsVideoMinimized(false); // 播放時先展開
+            };
+
+            const handleNextStep = () => {
+                if (step < 2) {
+                    setStep(step + 1);
+                }
+            };
+
+            const handleReveal = () => {
+                setStep(3);
+            };
+
+            const handleNextRound = () => {
+                if (currentRound < gameData.length - 1) {
+                    setCurrentRound(currentRound + 1);
+                    setStep(0);
+                } else {
+                    setGameStatus('finished');
+                }
+            };
+
+            const handleRestart = () => {
+                setCurrentRound(0);
+                setStep(0);
+                setGameStatus('playing');
+            };
+
+            // 渲染遊戲控制按鈕
+            const renderControls = () => {
+                if (step < 2) {
+                    return (
+                        <div className="grid grid-cols-1 gap-4 mt-4">
+                            <button
+                                onClick={handleNextStep}
+                                className="flex items-center justify-center gap-2 bg-yellow-100 hover:bg-yellow-200 text-yellow-800 font-bold py-4 px-6 rounded-xl transition border border-yellow-300 text-lg shadow-sm"
+                            >
+                                <Eye size={24} />
+                                {step === 0 ? "下一個提示（看過去照片 2）" : "下一個提示（看現在照片）"}
+                            </button>
+                            
+                            <button
+                                onClick={handleReveal}
+                                className="flex items-center justify-center gap-2 bg-red-100 hover:bg-red-200 text-red-800 font-bold py-4 px-6 rounded-xl transition border border-red-300 text-lg mt-2 shadow-sm"
+                            >
+                                <HelpCircle size={24} />
+                                直接公佈答案
+                            </button>
+                        </div>
+                    );
+                }
+                
+                if (step === 2) {
+                    return (
+                        <div className="grid grid-cols-1 gap-4 mt-4">
+                            <div className="text-center text-gray-500 font-bold mb-2 animate-pulse">
+                                已經是最後一張提示囉！大家猜到了嗎？
+                            </div>
+                            <button
+                                onClick={handleReveal}
+                                className="flex items-center justify-center gap-2 bg-red-500 hover:bg-red-600 text-white font-bold py-5 px-6 rounded-xl shadow-lg transition transform hover:scale-105 text-2xl"
+                            >
+                                <Star size={28} className="fill-current" />
+                                公佈答案
+                            </button>
+                        </div>
+                    );
+                }
+
+                // 公佈答案後的控制項
+                return (
+                    <div className="text-center animate-fade-in-up">
+                        <h2 className="text-3xl font-bold text-gray-800 mb-2">答案是：{currentCelebrity.name}</h2>
+                        <p className="text-gray-500 mb-6">大家猜對了嗎？</p>
+                        
+                        <button
+                            onClick={handleNextRound}
+                            className="w-full bg-green-600 hover:bg-green-700 text-white text-xl font-bold py-4 px-6 rounded-xl shadow-lg transition transform hover:scale-105 flex items-center justify-center gap-2"
+                        >
+                            {currentRound < gameData.length - 1 ? "下一題" : "查看成績"} <ArrowRight size={24} />
+                        </button>
+                    </div>
+                );
+            };
+
+            // --- 畫面渲染 ---
+
+            // 全螢幕按鈕共用區塊
+            const TopRightControls = ({ isDarkBg }) => (
+                <div className="absolute top-4 right-4 flex gap-2 z-50">
+                    <button 
+                        onClick={toggleFullScreen}
+                        className={`p-2 rounded-full transition shadow-sm backdrop-blur-sm ${isDarkBg ? 'bg-white/20 text-white hover:bg-white/40' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'}`}
+                        title={isFullscreen ? "退出全螢幕" : "全螢幕"}
+                    >
+                        {isFullscreen ? <Minimize size={24} /> : <Maximize size={24} />}
+                    </button>
+                </div>
+            );
+            
+            // 播放音樂影片按鈕 (當影片未播放時顯示)
+            const PlayVideoButton = () => (
+                <button
+                    onClick={handlePlayVideo}
+                    className="w-full bg-red-500 hover:bg-red-600 text-white text-lg font-bold py-3 px-6 rounded-xl transition transform hover:scale-105 flex items-center justify-center gap-2 mt-4 shadow-md"
+                >
+                    <YoutubeIcon size={24} className="fill-current text-white" /> 
+                    播放日式 R&B 休閒歌單
+                </button>
+            );
+
+
+            // 依據狀態渲染不同的畫面
+            const renderScreen = () => {
+                if (gameStatus === 'start') {
+                    return (
+                        <div className="min-h-screen bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center p-4 relative overflow-hidden">
+                            <TopRightControls isDarkBg={true} />
+                            <div className="bg-white rounded-2xl shadow-2xl p-8 max-w-md w-full text-center z-10">
+                                <HelpCircle className="w-20 h-20 text-indigo-500 mx-auto mb-6" />
+                                <h1 className="text-4xl font-bold text-gray-800 mb-4">猜猜我是誰？</h1>
+                                <p className="text-gray-600 mb-8 text-lg">
+                                    這是一個團體互動遊戲！
+                                    <br />
+                                    我們會展示明星過去的照片，大家一起猜猜看是誰！
+                                </p>
+                                <button 
+                                    onClick={handleStartGame}
+                                    className="w-full bg-indigo-600 hover:bg-indigo-700 text-white text-xl font-bold py-4 px-6 rounded-xl transition transform hover:scale-105 flex items-center justify-center gap-2"
+                                >
+                                    <Play size={24} /> 開始遊戲
+                                </button>
+                                {/* 只有在未播放時才顯示播放按鈕 */}
+                                {!isVideoPlaying && <PlayVideoButton />}
+                            </div>
+                        </div>
+                    );
+                }
+
+                if (gameStatus === 'finished') {
+                    return (
+                        <div className="min-h-screen bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center p-4 relative">
+                            <TopRightControls isDarkBg={true} />
+                            <div className="bg-white rounded-2xl shadow-2xl p-8 max-w-md w-full text-center">
+                                <CheckCircle className="w-20 h-20 text-green-500 mx-auto mb-6" />
+                                <h1 className="text-3xl font-bold text-gray-800 mb-4">遊戲結束！</h1>
+                                <p className="text-gray-600 mb-8">所有的題目都已經猜完囉。</p>
+                                <button 
+                                    onClick={handleRestart}
+                                    className="w-full bg-indigo-600 hover:bg-indigo-700 text-white text-xl font-bold py-3 px-6 rounded-xl transition flex items-center justify-center gap-2"
+                                >
+                                    <RotateCcw size={24} /> 再玩一次
+                                </button>
+                                {!isVideoPlaying && <PlayVideoButton />}
+                            </div>
+                        </div>
+                    );
+                }
+
+                // Playing State
+                return (
+                    <div className="min-h-screen bg-gray-100 flex flex-col items-center py-8 px-4 font-sans relative">
+                        <TopRightControls isDarkBg={false} />
+
+                        <div className="w-full max-w-lg mb-6 flex justify-between items-center text-gray-500 font-medium mt-8 sm:mt-0">
+                            <span>第 {currentRound + 1} 題 / 共 {gameData.length} 題</span>
+                            <button 
+                                onClick={() => setGameStatus('start')} 
+                                className="text-sm hover:text-indigo-600 underline"
+                            >
+                                回首頁
+                            </button>
+                        </div>
+
+                        <div className="w-full max-w-lg bg-white rounded-2xl shadow-xl overflow-hidden border border-gray-200">
+                            <div className="relative bg-gray-900 h-96 w-full flex items-center justify-center group">
+                                <img 
+                                    src={currentCelebrity.photos[Math.min(step, 2)].url} 
+                                    alt="Celebrity" 
+                                    className="w-full h-full object-contain transition-opacity duration-500"
+                                    onError={(e) => { e.target.onerror = null; e.target.src = "https://placehold.co/600x400/CCCCCC/333333?text=圖片載入失敗"; }}
+                                />
+                                
+                                <div className="absolute top-4 left-4 bg-black/60 text-white px-3 py-1 rounded-full text-sm font-bold backdrop-blur-sm flex items-center gap-2">
+                                    <ImageIcon size={16} />
+                                    {currentCelebrity.photos[Math.min(step, 2)].label}
+                                </div>
+
+                                {/* 答案公佈遮罩 */}
+                                {step === 3 && (
+                                    <div className="absolute inset-0 bg-black/40 flex items-end justify-center pb-10">
+                                        <div className="bg-green-500 text-white text-4xl font-bold px-8 py-4 rounded-xl shadow-lg transform scale-110 animate-bounce">
+                                            {currentCelebrity.name}
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+
+                            <div className="p-6">
+                                {/* 提示進度條 */}
+                                <div className="flex justify-center gap-2 mb-6">
+                                    {[0, 1, 2].map((s) => (
+                                        <div 
+                                            key={s} 
+                                            className={`h-2 rounded-full transition-all duration-300 ${
+                                                s === Math.min(step, 2) ? 'w-8 bg-indigo-600' : 'w-2 bg-gray-300'
+                                            }`}
+                                        />
+                                    ))}
+                                    <div className={`h-2 rounded-full transition-all duration-300 ${
+                                        step === 3 ? 'w-8 bg-green-500' : 'w-2 bg-gray-300'
+                                    }`} />
+                                </div>
+
+                                {renderControls()}
+                                {/* 只有在未播放時才顯示播放按鈕 */}
+                                {!isVideoPlaying && <PlayVideoButton />}
+                            </div>
+                        </div>
+                        
+                        {step < 3 && (
+                            <div className="mt-8 text-gray-400 text-sm max-w-md text-center">
+                                提示：根據畫面上的照片，讓大家猜猜看是誰，猜不出來就按提示！
+                            </div>
+                        )}
+                        
+                        {/* 影片播放器 - 浮動在右下角 */}
+                        {isVideoPlaying && (
+                            <YouTubePlayer 
+                                videoId={YOUTUBE_VIDEO_ID} 
+                                title={YOUTUBE_VIDEO_TITLE}
+                                isMinimized={isVideoMinimized}
+                                setIsMinimized={setIsVideoMinimized}
+                                setIsPlaying={setIsVideoPlaying} // 用於關閉播放器
+                            />
+                        )}
+                    </div>
+                );
+            };
+
+            return (
+                <React.Fragment>
+                    {renderScreen()}
+                </React.Fragment>
+            );
+        };
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<GuessWhoGame />);
+    </script>
+</body>
+</html>
