@@ -139,7 +139,7 @@
                     name: "張惠妹",
                     photos: [
                         { url: "https://resize-image.vocus.cc/resize?compression=6&norotation=true&url=https%3A%2F%2Fimages.vocus.cc%2Fec998dd5-ad49-4ee8-899f-ffc5e67ab43b.png&width=740&sign=uu-Vso-piL8EjQ5QjovHi6OkkfjZV6cgzwCs3HOKxIk", label: "題目：過去照片 (1)" },
-                        { url: "https://p3-pc-sign.douyinpic.com/tos-cn-i-0813/oAZAAa9DAEB5i6iEATQzCQ9iPaEIAviIUjWpA~tplv-dy-aweme-images:q75.webp?biz_tag=aweme_images&from=327834062&lk3s=138a59ce&s=PackSourceEnum_SEARCH&sc=image&se=false&x-expires=1768071600&x-signature=9B6PFgpPjQbXN%2BKrviesIDkMJSA%3D", label: "提示 1：過去照片 (2)" },
+                        { url: "https://p3-pc-sign.douyinpic.com/tos-cn-i-0813/oAZAAa9DAEB5i6iEATQzCQ9iPaEIAviIUjWpA~tplv-dy-aweme-images:q75.webp?biz_tag=aweme_images&from=327834062&lk3s=138a59ce&s=PackSourceEnum_SEARCH&sc=image&se=false&x-expires=1768071600&x-signature=9B6PFgpPjQbN%2BKrviesIDkMJSA%3D", label: "提示 1：過去照片 (2)" },
                         { url: "https://iam.marieclaire.com.tw/s1200c675h100b0webp100/assets/mc/202511/690B0F4697A281762332486.jpeg", label: "提示 2：現在照片" }
                     ]
                 },
@@ -194,7 +194,8 @@
             
             const [videoUrl, setVideoUrl] = useState('');
             const [isPlayerActive, setIsPlayerActive] = useState(false);
-            const [isPlayerMinimized, setIsPlayerMinimized] = useState(false); // 預設以最小化模式啟動
+            // 預設以最小化 (現在為隱藏) 模式啟動
+            const [isPlayerMinimized, setIsPlayerMinimized] = useState(true); 
 
             const currentCelebrity = gameData[currentRound];
 
@@ -202,7 +203,7 @@
             const handleStartVideo = () => {
                 setVideoUrl(EMBED_URL);
                 setIsPlayerActive(true);
-                setIsPlayerMinimized(true); // 預設最小化播放 (背景模式)
+                setIsPlayerMinimized(true); // 預設最小化/隱藏播放 (背景模式)
             };
 
             const handleCloseVideo = () => {
@@ -292,28 +293,30 @@
                                 直接公佈答案
                             </button>
                             
-                            {/* 影片控制區塊 (在遊戲進行時) */}
-                            {!isPlayerActive ? (
-                                <button
-                                    onClick={handleStartVideo}
-                                    className="flex items-center justify-center gap-2 bg-purple-100 hover:bg-purple-200 text-purple-800 font-bold py-4 px-6 rounded-xl transition border border-purple-300 text-lg shadow-sm"
-                                >
-                                    <Play size={24} /> 播放背景影片
-                                </button>
-                            ) : (
+                            {/* 影片控制區塊 (現在用於展開/隱藏音訊播放器) */}
+                            {isPlayerActive && (
                                 <button
                                     onClick={() => setIsPlayerMinimized(!isPlayerMinimized)}
                                     className="flex items-center justify-center gap-2 bg-purple-100 hover:bg-purple-200 text-purple-800 font-bold py-4 px-6 rounded-xl transition border border-purple-300 text-lg shadow-sm"
                                 >
                                     {isPlayerMinimized ? (
                                         <>
-                                            <ChevronsUp size={24} /> 展開影片播放器 (右下角)
+                                            <ChevronsUp size={24} /> 展開背景音訊播放器 (暫時顯示)
                                         </>
                                     ) : (
                                         <>
-                                            <ChevronsDown size={24} /> 最小化影片 (佔滿畫面)
+                                            <ChevronsDown size={24} /> 隱藏背景音訊播放器 (繼續播放)
                                         </>
                                     )}
+                                </button>
+                            )}
+                            {/* 如果影片未啟動，提供啟動按鈕 */}
+                            {!isPlayerActive && (
+                                <button
+                                    onClick={handleStartVideo}
+                                    className="flex items-center justify-center gap-2 bg-purple-100 hover:bg-purple-200 text-purple-800 font-bold py-4 px-6 rounded-xl transition border border-purple-300 text-lg shadow-sm"
+                                >
+                                    <Play size={24} /> 播放背景音訊
                                 </button>
                             )}
                         </div>
@@ -361,20 +364,16 @@
                                 <HelpCircle className="w-20 h-20 text-indigo-500 mx-auto mb-6" />
                                 <h1 className="text-4xl font-bold text-gray-800 mb-4">猜猜我是誰？</h1>
                                 <p className="text-gray-600 mb-8 text-lg">
-                                    選擇下方按鈕開始遊戲，並同時啟動背景影片播放。
+                                    點擊下方按鈕開始遊戲，並同時啟動背景音訊播放。
                                 </p>
                                 <button 
+                                    // 啟動遊戲和背景音訊，這是瀏覽器允許 Autoplay 的必要互動
                                     onClick={() => handleStartGame(true)}
                                     className="w-full bg-indigo-600 hover:bg-indigo-700 text-white text-xl font-bold py-4 px-6 rounded-xl transition transform hover:scale-105 flex items-center justify-center gap-2"
                                 >
-                                    <Play size={24} /> 開始遊戲並播放背景影片
+                                    <Play size={24} /> 開始遊戲 (啟動背景音訊)
                                 </button>
-                                <button 
-                                    onClick={() => handleStartGame(false)}
-                                    className="w-full mt-4 bg-gray-200 hover:bg-gray-300 text-gray-800 text-lg font-bold py-3 px-6 rounded-xl transition"
-                                >
-                                    只開始遊戲 (無背景影片)
-                                </button>
+                                {/* 移除「只開始遊戲」按鈕，鼓勵使用音訊功能 */}
                             </div>
                         </div>
                     );
@@ -473,28 +472,29 @@
                     {/* Floating YouTube Player */}
                     {isPlayerActive && (
                         <div className={`fixed z-[100] transition-all duration-300 ${
-                            // 根據是否最小化來切換樣式
+                            // NEW: 完全隱藏播放器，只保留 DOM 結構讓音訊繼續播放
                             isPlayerMinimized 
-                                ? 'bottom-4 right-4 w-80 h-auto sm:w-96' // 最小化：右下角
+                                ? 'bottom-0 right-0 w-1 h-1 opacity-0 pointer-events-none' 
                                 : 'inset-0 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm' // 展開：佔滿畫面
                         }`}>
                             <div className={`rounded-xl shadow-2xl overflow-hidden bg-gray-900 transition-all duration-300 ${
+                                // 內部內容在隱藏狀態下也設為隱藏
                                 isPlayerMinimized 
-                                    ? 'w-full' 
+                                    ? 'hidden' 
                                     : 'w-full max-w-4xl'
                             }`}>
                                 {/* Header/Controls */}
                                 <div className="flex justify-between items-center p-2 bg-gray-800 text-white">
                                     <span className="text-sm font-semibold truncate">
-                                        {isPlayerMinimized ? '背景影片 (播放中)' : '賀一航 YouTube 影片播放'}
+                                        賀一航 YouTube 影片播放
                                     </span>
                                     <div>
                                         <button
-                                            onClick={() => setIsPlayerMinimized(!isPlayerMinimized)}
+                                            onClick={() => setIsPlayerMinimized(true)} // 點擊即隱藏
                                             className="p-1.5 rounded-full hover:bg-gray-700 transition mx-1"
-                                            title={isPlayerMinimized ? "展開播放器" : "縮小到角落"}
+                                            title="縮小到角落並隱藏"
                                         >
-                                            {isPlayerMinimized ? <ChevronsUp size={20} /> : <ChevronsDown size={20} />}
+                                            <ChevronsDown size={20} />
                                         </button>
                                         <button
                                             onClick={handleCloseVideo}
