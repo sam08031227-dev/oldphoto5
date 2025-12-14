@@ -28,37 +28,13 @@
             font-family: "Microsoft JhengHei", "Heiti TC", sans-serif;
             background-color: #f3f4f6;
         }
-        /* YouTube Player 最小化樣式過渡 */
-        .youtube-player-container {
-            transition: all 0.3s ease-in-out;
-            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
-        }
-        /* 最小化時的尺寸 */
-        .youtube-player-minimized {
-            width: 80px;
-            height: 60px;
-        }
-        /* 正常/最大化時的尺寸 */
-        .youtube-player-maximized {
-            width: 90vw; /* 為了響應式設計，使用 vw */
-            max-width: 400px;
-            height: calc(90vw * 0.5625); /* 16:9 比例 */
-            max-height: 225px;
-        }
-        /* 桌面版尺寸修正 */
-        @media (min-width: 640px) {
-            .youtube-player-maximized {
-                width: 400px;
-                height: 225px;
-            }
-        }
     </style>
 </head>
 <body>
     <div id="root"></div>
 
     <script type="text/babel">
-        const { useState, useEffect } = React;
+        const { useState, useEffect, useRef } = React;
 
         // --- 圖示組件 ---
         const IconBase = ({ size = 24, className = "", children }) => (
@@ -111,140 +87,179 @@
         const Volume2 = (props) => (
             <IconBase {...props}><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/></IconBase>
         );
-        const XIcon = (props) => (
-             <IconBase {...props}><path d="M18 6 6 18"/><path d="m6 6 12 12"/></IconBase>
+        const VolumeX = (props) => (
+            <IconBase {...props}><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><line x1="23" y1="9" x2="17" y2="15"/><line x1="17" y1="9" x2="23" y2="15"/></IconBase>
         );
-        const YoutubeIcon = (props) => (
-            <IconBase {...props} fill="red" stroke="white"><path d="M2.5 17.5V6.5c0-.6.4-1.1 1-1.1h17c.6 0 1 .5 1 1.1v11c0 .6-.4 1.1-1 1.1h-17c-.6 0-1-.5-1-1.1Z"/><path d="m10 15 5-3-5-3v6Z"/></IconBase>
+        const X = (props) => (
+            <IconBase {...props}><path d="M18 6 6 18"/><path d="m6 6 12 12"/></IconBase>
         );
-
-
-        // --- YouTube 播放器組件 ---
-        const YouTubePlayer = ({ videoId, title, isMinimized, setIsMinimized, setIsPlaying }) => {
-            // 由於設置了 autoplay=1，影片會在 iframe 載入後自動播放
-            const embedUrl = `https://www.youtube.com/embed/${videoId}?autoplay=1&controls=1&enablejsapi=1&modestbranding=1&rel=0`;
-
-            return (
-                <div 
-                    className={`Youtubeer-container fixed bottom-4 right-4 z-50 rounded-xl overflow-hidden bg-gray-800 ${
-                        isMinimized ? 'youtube-player-minimized' : 'youtube-player-maximized'
-                    } ${
-                        isMinimized ? 'hover:scale-105 cursor-pointer' : ''
-                    }`}
-                    // 點擊最小化播放器時，將其展開
-                    onClick={() => isMinimized && setIsMinimized(false)}
-                >
-                    {isMinimized ? (
-                        // 最小化視窗
-                        <div className="w-full h-full flex items-center justify-center bg-gray-900/90 text-white relative">
-                            <Volume2 size={32} className="text-red-500 animate-pulse" />
-                            <button
-                                onClick={(e) => {
-                                    e.stopPropagation(); // 阻止展開點擊事件
-                                    setIsMinimized(false);
-                                }}
-                                className="absolute top-0 right-0 p-1 text-white bg-black/50 rounded-bl-lg hover:bg-black"
-                                title="展開"
-                            >
-                                <Maximize size={16} />
-                            </button>
-                        </div>
-                    ) : (
-                        // 展開視窗
-                        <div className="w-full h-full relative">
-                            {/* 嵌入 YouTube 播放器 */}
-                            <iframe
-                                width="100%"
-                                height="100%"
-                                src={embedUrl}
-                                frameBorder="0"
-                                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                                allowFullScreen
-                                title={title}
-                            ></iframe>
-                            <div className="absolute top-0 right-0 flex gap-1 p-2">
-                                {/* 縮小按鈕 */}
-                                <button
-                                    onClick={() => setIsMinimized(true)}
-                                    className="p-1.5 rounded-full bg-black/60 text-white hover:bg-black/80 transition"
-                                    title="縮小"
-                                >
-                                    <Minimize size={18} />
-                                </button>
-                                {/* 關閉按鈕 */}
-                                <button
-                                    onClick={() => setIsPlaying(false)}
-                                    className="p-1.5 rounded-full bg-red-600/80 text-white hover:bg-red-700 transition"
-                                    title="關閉影片"
-                                >
-                                    <XIcon size={18} />
-                                </button>
-                            </div>
-                            <div className="absolute bottom-0 left-0 bg-black/50 text-white text-xs px-2 py-0.5 max-w-full truncate rounded-tr-lg">
-                                {title}
-                            </div>
-                        </div>
-                    )}
-                </div>
-            );
-        };
-
+        const ChevronsDown = (props) => (
+            <IconBase {...props}><path d="m7 15 5 5 5-5"/><path d="m7 9 5 5 5-5"/></IconBase>
+        );
+        const ChevronsUp = (props) => (
+            <IconBase {...props}><path d="m17 11-5-5-5 5"/><path d="m17 17-5-5-5 5"/></IconBase>
+        );
 
         // --- 主程式邏輯 ---
         const GuessWhoGame = () => {
-            // 遊戲資料設定 (使用佔位圖作為範例)
+            // 遊戲資料設定
             const gameData = [
                 {
                     id: 1,
                     name: "金城武",
                     photos: [
-                        { url: "https://placehold.co/600x400/1e293b/ffffff?text=金城武+-+過去照片(1)", label: "題目：過去照片 (1)" },
-                        { url: "https://placehold.co/600x400/334155/ffffff?text=金城武+-+過去照片(2)", label: "提示 1：過去照片 (2)" },
-                        { url: "https://placehold.co/600x400/475569/ffffff?text=金城武+-+現在照片", label: "提示 2：現在照片" }
+                        { url: "https://megapx-assets.dcard.tw/images/2e1a59a8-5f95-447e-8e6d-c0d30c5f7d8e/640.jpeg", label: "題目：過去照片 (1)" },
+                        { url: "https://www.juksy.com/api/image/webp?source=https://assets.juksy.com/files/articles/129473/672edcde9b8df.jpg", label: "提示 1：過去照片 (2)" },
+                        { url: "https://cdn-cw1.cw.com.tw/images/article/C1418099648229.jpg", label: "提示 2：現在照片" }
                     ]
                 },
                 {
                     id: 2,
                     name: "楊林",
                     photos: [
-                        { url: "https://placehold.co/600x400/1e293b/ffffff?text=楊林+-+過去照片(1)", label: "題目：過去照片 (1)" },
-                        { url: "https://placehold.co/600x400/334155/ffffff?text=楊林+-+過去照片(2)", label: "提示 1：過去照片 (2)" },
-                        { url: "https://placehold.co/600x400/475569/ffffff?text=楊林+-+現在照片", label: "提示 2：現在照片" }
+                        { url: "https://g.udn.com.tw/upfiles/B_OR/OrientExpress/PSN_PHOTO/802/f_28828802_1.jpg", label: "題目：過去照片 (1)" },
+                        { url: "https://i.ytimg.com/vi/sp4ff1RMxJA/sddefault.jpg", label: "提示 1：過去照片 (2)" },
+                        { url: "https://d1vvo51t6lqxtd.cloudfront.net/rss/20200722/b4117159910940122dc5d0dbd39e6a99.jpg", label: "提示 2：現在照片" }
                     ]
                 },
                 {
                     id: 3,
                     name: "張晨光",
                     photos: [
-                        { url: "https://placehold.co/600x400/1e293b/ffffff?text=張晨光+-+過去照片(1)", label: "題目：過去照片 (1)" },
-                        { url: "https://placehold.co/600x400/334155/ffffff?text=張晨光+-+過去照片(2)", label: "提示 1：過去照片 (2)" },
-                        { url: "https://placehold.co/600x400/475569/ffffff?text=張晨光+-+現在照片", label: "提示 2：現在照片" }
+                        { url: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTdfy7AdtcrAA7VYMNyTeLJFQT4V3vabEiKmw&s", label: "題目：過去照片 (1)" },
+                        { url: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTRmPNNy-lQxApfdcCRkk6rl9AmFOpDVmI5Xg&s", label: "提示 1：過去照片 (2)" },
+                        { url: "https://v3-statics.mirrormedia.mg/images/20210329172012-0810db9e002a85e394b35e857741c471-w1600.webP", label: "提示 2：現在照片" }
                     ]
                 },
-                // 為了保持程式碼簡潔，只保留三個範例，您可以自行添加更多題目
+                {
+                    id: 4,
+                    name: "陳美鳳",
+                    photos: [
+                        { url: "https://images.chinatimes.com/newsphoto/2024-09-25/656/20240925005111.jpg", label: "題目：過去照片 (1)" },
+                        { url: "https://static.ctwant.com/images/content/15/55515/ab92bd2af7d9b1426d06a79f685dc226.jpg", label: "提示 1：過去照片 (2)" },
+                        { url: "https://images.chinatimes.com/newsphoto/2023-08-24/1024/20230824002059.jpg", label: "提示 2：現在照片" }
+                    ]
+                },
+                {
+                    id: 5,
+                    name: "張惠妹",
+                    photos: [
+                        { url: "https://resize-image.vocus.cc/resize?compression=6&norotation=true&url=https%3A%2F%2Fimages.vocus.cc%2Fec998dd5-ad49-4ee8-899f-ffc5e67ab43b.png&width=740&sign=uu-Vso-piL8EjQ5QjovHi6OkkfjZV6cgzwCs3HOKxIk", label: "題目：過去照片 (1)" },
+                        { url: "https://p3-pc-sign.douyinpic.com/tos-cn-i-0813/oAZAAa9DAEB5i6iEATQzCQ9iPaEIAviIUjWpA~tplv-dy-aweme-images:q75.webp?biz_tag=aweme_images&from=327834062&lk3s=138a59ce&s=PackSourceEnum_SEARCH&sc=image&se=false&x-expires=1768071600&x-signature=9B6PFgpPjQbXN%2BKrviesIDkMJSA%3D", label: "提示 1：過去照片 (2)" },
+                        { url: "https://iam.marieclaire.com.tw/s1200c675h100b0webp100/assets/mc/202511/690B0F4697A281762332486.jpeg", label: "提示 2：現在照片" }
+                    ]
+                },
+                {
+                    id: 6,
+                    name: "葉全真",
+                    photos: [
+                        { url: "https://p3-pc-sign.douyinpic.com/tos-cn-i-0813/ooixKNAfAfmAfeJDBBefyeuAE6BxAEauuZfE7Af~tplv-dy-aweme-images:q75.webp?biz_tag=aweme_images&from=327834062&lk3s=138a59ce&s=PackSourceEnum_SEARCH&sc=image&se=false&x-expires=1768136400&x-signature=fXoIE%2FYogcwofFhal5049mUqxPk%3D", label: "題目：過去照片 (1)" },
+                        { url: "https://www.popdaily.com.tw/shaper/wp-content/uploads/2023/12/9tjakf2sqakg8owsggc408k08s6d9d6.jpeg?resize-w=1700&resize-h=968&format=webp", label: "提示 1：過去照片 (2)" },
+                        { url: "https://media.nownews.com/nn_media/thumbnail/2025/09/1758695358375-a8cf895c314d44a99233f7057d7ea7a5-800x451.webp?unShow=false", label: "提示 2：現在照片" }
+                    ]
+                },
+                {
+                    id: 7,
+                    name: "譚艾珍",
+                    photos: [
+                        { url: "https://static.ctwant.com/images/content/43/56643/e515c751d9790b3b7f8070971c97e9f6.jpg", label: "題目：過去照片 (1)" },
+                        { url: "https://img.ltn.com.tw/Upload/ent/page/800/2015/05/11/phpKLAEbA.jpg", label: "提示 1：過去照片 (2)" },
+                        { url: "https://static.tvbs.com.tw/health2.0/images/uploads/2024/12/20241217160929-tsEPrNk0.jpg", label: "提示 2：現在照片" }
+                    ]
+                },
+                {
+                    id: 8,
+                    name: "顧寶明",
+                    photos: [
+                        { url: "https://i1.kknews.cc/rQblo5VmXal2DJDT3aHyEcNefDl4c1M8HA/0.jpg", label: "題目：過去照片 (1)" },
+                        { url: "https://pgw.udn.com/gw/photo.php?u=https://uc.udn.com.tw/photo/2023/03/15/0/20639238.png&x=0&y=0&sw=0&sh=0&exp=3600", label: "提示 1：過去照片 (2)" },
+                        { url: "https://v3-statics.mirrormedia.mg/images/20230313175709-54f48cc7527b03277e4ca036d3265f8a-w1600.jpg", label: "提示 2：現在照片" }
+                    ]
+                },
+                {
+                    id: 9,
+                    name: "賀一航",
+                    photos: [
+                        { url: "https://cdn2.ettoday.net/images/1208/d1208932.jpg", label: "題目：過去照片 (1)" },
+                        { url: "https://uc.udn.com.tw/photo/2024/08/09/105/30266127.jpg", label: "提示 1：過去照片 (2)" },
+                        { url: "https://s.yimg.com/ny/api/res/1.2/_eOuIN3MG5d.O9nJMhlq4w--/YXBwaWQ9aGlnaGxhbmRlcjt3PTY0MDtoPTQyNg--/https://media.zenfs.com/zh-Hant-TW/homerun/ftvn.com.tw/bb3586126f3d210d655109208f446735", label: "提示 2：現在照片" }
+                    ]
+                }
             ];
-            
-            // YouTube 影片資訊 (從 user 提供的連結取得)
-            const YOUTUBE_VIDEO_ID = 'r34IHFI-29c';
-            const YOUTUBE_VIDEO_TITLE = 'Japanese R&B｜一聽就愛上的日文歌・快樂就是這麼簡單🎶';
 
-            // 遊戲狀態
+            // --- 狀態管理 ---
             const [currentRound, setCurrentRound] = useState(0);
-            const [step, setStep] = useState(0); // 0, 1, 2 = 提示階段; 3 = 公佈答案
-            const [gameStatus, setGameStatus] = useState('start'); // 'start', 'playing', 'finished'
+            const [step, setStep] = useState(0);
+            const [gameStatus, setGameStatus] = useState('start');
             const [isFullscreen, setIsFullscreen] = useState(false);
+            const [isMusicPlaying, setIsMusicPlaying] = useState(true); // 背景音樂預設開啟
             
-            // 影片播放狀態
-            const [isVideoPlaying, setIsVideoPlaying] = useState(false);
-            const [isVideoMinimized, setIsVideoMinimized] = useState(false); 
+            // 影片播放器狀態
+            const EMBED_VIDEO_ID = "r34IHFI-29c"; // 影片 ID
+            const EMBED_URL = `https://www.youtube.com/embed/${EMBED_VIDEO_ID}?autoplay=1&rel=0&modestbranding=1`; // 嵌入 URL
+            const [videoUrl, setVideoUrl] = useState('');
+            const [isPlayerActive, setIsPlayerActive] = useState(false);
+            const [isPlayerMinimized, setIsPlayerMinimized] = useState(false);
 
+            const audioRef = useRef(null);
             const currentCelebrity = gameData[currentRound];
+
+            // --- 背景音樂功能 ---
+            useEffect(() => {
+                // 使用 Internet Archive 的穩定 MP3 連結作為背景音樂
+                audioRef.current = new Audio("https://ia800504.us.archive.org/33/items/ErikSatieGymnopedieNo1/ErikSatieGymnopedieNo1.mp3");
+                audioRef.current.loop = true;
+                audioRef.current.volume = 0.5;
+                
+                return () => {
+                    if (audioRef.current) {
+                        audioRef.current.pause();
+                        audioRef.current = null;
+                    }
+                };
+            }, []);
+
+            const toggleMusic = () => {
+                if (!audioRef.current) return;
+                
+                if (isMusicPlaying) {
+                    audioRef.current.pause();
+                } else {
+                    audioRef.current.play().catch(e => console.log("Audio play error:", e));
+                }
+                setIsMusicPlaying(!isMusicPlaying);
+            };
+
+            // --- 影片播放器控制 ---
+            const handleOpenVideo = () => {
+                setVideoUrl(EMBED_URL);
+                setIsPlayerActive(true);
+                setIsPlayerMinimized(false);
+                // 影片播放時，暫停背景音樂
+                if (audioRef.current && isMusicPlaying) {
+                    audioRef.current.pause();
+                    setIsMusicPlaying(false);
+                }
+            };
+
+            const handleCloseVideo = () => {
+                // 停止影片播放 (移除嵌入 URL)
+                setVideoUrl(''); 
+                setIsPlayerActive(false);
+                
+                // 關閉影片後，自動恢復背景音樂
+                if (audioRef.current) {
+                    audioRef.current.play().catch(e => console.log("Audio resume error:", e));
+                    setIsMusicPlaying(true);
+                }
+            };
+
 
             // --- 全螢幕功能 ---
             const toggleFullScreen = () => {
                 if (!document.fullscreenElement) {
                     document.documentElement.requestFullscreen().catch(err => {
-                        console.error(`Error attempting to enable full-screen mode: ${err.message}`);
+                        console.log(`Error attempting to enable full-screen mode: ${err.message} (${err.name})`);
                     });
                 } else {
                     if (document.exitFullscreen) {
@@ -267,12 +282,13 @@
             // --- 遊戲邏輯 ---
             const handleStartGame = () => {
                 setGameStatus('playing');
-            };
-            
-            // 播放影片邏輯 (將狀態設為播放中，會觸發 YouTubePlayer 渲染)
-            const handlePlayVideo = () => {
-                setIsVideoPlaying(true);
-                setIsVideoMinimized(false); // 播放時先展開
+                // 使用者互動後，播放音樂
+                if (audioRef.current) {
+                    audioRef.current.play().catch(e => {
+                        console.log("Auto-play prevented:", e);
+                        setIsMusicPlaying(false);
+                    });
+                }
             };
 
             const handleNextStep = () => {
@@ -298,9 +314,13 @@
                 setCurrentRound(0);
                 setStep(0);
                 setGameStatus('playing');
+                // 確保重新開始時，背景音樂是播放的
+                if (audioRef.current) {
+                    audioRef.current.play().catch(e => console.log("Audio resume error:", e));
+                    setIsMusicPlaying(true);
+                }
             };
 
-            // 渲染遊戲控制按鈕
             const renderControls = () => {
                 if (step < 2) {
                     return (
@@ -315,11 +335,21 @@
                             
                             <button
                                 onClick={handleReveal}
-                                className="flex items-center justify-center gap-2 bg-red-100 hover:bg-red-200 text-red-800 font-bold py-4 px-6 rounded-xl transition border border-red-300 text-lg mt-2 shadow-sm"
+                                className="flex items-center justify-center gap-2 bg-red-100 hover:bg-red-200 text-red-800 font-bold py-4 px-6 rounded-xl transition border border-red-300 text-lg shadow-sm"
                             >
                                 <HelpCircle size={24} />
                                 直接公佈答案
                             </button>
+                            
+                            {/* 新增的影片播放按鈕 */}
+                            {!isPlayerActive && (
+                                <button
+                                    onClick={handleOpenVideo}
+                                    className="flex items-center justify-center gap-2 bg-purple-100 hover:bg-purple-200 text-purple-800 font-bold py-4 px-6 rounded-xl transition border border-purple-300 text-lg shadow-sm"
+                                >
+                                    <Play size={24} /> 播放背景音樂影片
+                                </button>
+                            )}
                         </div>
                     );
                 }
@@ -337,11 +367,20 @@
                                 <Star size={28} className="fill-current" />
                                 公佈答案
                             </button>
+                            
+                            {/* 新增的影片播放按鈕 (最後一步仍然可以開啟影片) */}
+                            {!isPlayerActive && (
+                                <button
+                                    onClick={handleOpenVideo}
+                                    className="flex items-center justify-center gap-2 bg-purple-100 hover:bg-purple-200 text-purple-800 font-bold py-4 px-6 rounded-xl transition border border-purple-300 text-lg shadow-sm"
+                                >
+                                    <Play size={24} /> 播放背景音樂影片
+                                </button>
+                            )}
                         </div>
                     );
                 }
 
-                // 公佈答案後的控制項
                 return (
                     <div className="text-center animate-fade-in-up">
                         <h2 className="text-3xl font-bold text-gray-800 mb-2">答案是：{currentCelebrity.name}</h2>
@@ -359,9 +398,18 @@
 
             // --- 畫面渲染 ---
 
-            // 全螢幕按鈕共用區塊
+            // 音樂控制按鈕與全螢幕按鈕共用區塊
             const TopRightControls = ({ isDarkBg }) => (
                 <div className="absolute top-4 right-4 flex gap-2 z-50">
+                     <button 
+                        onClick={toggleMusic}
+                        // 影片播放中時，背景音樂按鈕顯示為關閉，且不能點擊 (避免衝突)
+                        disabled={isPlayerActive} 
+                        className={`p-2 rounded-full transition shadow-sm backdrop-blur-sm ${isPlayerActive ? 'bg-gray-400/50 text-gray-600 cursor-not-allowed' : (isDarkBg ? 'bg-white/20 text-white hover:bg-white/40' : 'bg-gray-200 text-gray-700 hover:bg-gray-300')}`}
+                        title={isPlayerActive ? "請先關閉影片再控制背景音樂" : (isMusicPlaying ? "關閉背景音樂" : "開啟背景音樂")}
+                    >
+                        {isMusicPlaying && !isPlayerActive ? <Volume2 size={24} /> : <VolumeX size={24} />}
+                    </button>
                     <button 
                         onClick={toggleFullScreen}
                         className={`p-2 rounded-full transition shadow-sm backdrop-blur-sm ${isDarkBg ? 'bg-white/20 text-white hover:bg-white/40' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'}`}
@@ -371,22 +419,11 @@
                     </button>
                 </div>
             );
-            
-            // 播放音樂影片按鈕 (當影片未播放時顯示)
-            const PlayVideoButton = () => (
-                <button
-                    onClick={handlePlayVideo}
-                    className="w-full bg-red-500 hover:bg-red-600 text-white text-lg font-bold py-3 px-6 rounded-xl transition transform hover:scale-105 flex items-center justify-center gap-2 mt-4 shadow-md"
-                >
-                    <YoutubeIcon size={24} className="fill-current text-white" /> 
-                    播放日式 R&B 休閒歌單
-                </button>
-            );
-
 
             // 依據狀態渲染不同的畫面
             const renderScreen = () => {
                 if (gameStatus === 'start') {
+                    // ... (Start screen logic remains the same)
                     return (
                         <div className="min-h-screen bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center p-4 relative overflow-hidden">
                             <TopRightControls isDarkBg={true} />
@@ -404,14 +441,13 @@
                                 >
                                     <Play size={24} /> 開始遊戲
                                 </button>
-                                {/* 只有在未播放時才顯示播放按鈕 */}
-                                {!isVideoPlaying && <PlayVideoButton />}
                             </div>
                         </div>
                     );
                 }
 
                 if (gameStatus === 'finished') {
+                    // ... (Finished screen logic remains the same)
                     return (
                         <div className="min-h-screen bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center p-4 relative">
                             <TopRightControls isDarkBg={true} />
@@ -425,7 +461,6 @@
                                 >
                                     <RotateCcw size={24} /> 再玩一次
                                 </button>
-                                {!isVideoPlaying && <PlayVideoButton />}
                             </div>
                         </div>
                     );
@@ -452,7 +487,7 @@
                                     src={currentCelebrity.photos[Math.min(step, 2)].url} 
                                     alt="Celebrity" 
                                     className="w-full h-full object-contain transition-opacity duration-500"
-                                    onError={(e) => { e.target.onerror = null; e.target.src = "https://placehold.co/600x400/CCCCCC/333333?text=圖片載入失敗"; }}
+                                    onError={(e) => { e.target.src = 'https://placehold.co/400x400/cccccc/333333?text=圖片載入失敗'; e.target.style.objectFit = 'contain'; }}
                                 />
                                 
                                 <div className="absolute top-4 left-4 bg-black/60 text-white px-3 py-1 rounded-full text-sm font-bold backdrop-blur-sm flex items-center gap-2">
@@ -460,7 +495,6 @@
                                     {currentCelebrity.photos[Math.min(step, 2)].label}
                                 </div>
 
-                                {/* 答案公佈遮罩 */}
                                 {step === 3 && (
                                     <div className="absolute inset-0 bg-black/40 flex items-end justify-center pb-10">
                                         <div className="bg-green-500 text-white text-4xl font-bold px-8 py-4 rounded-xl shadow-lg transform scale-110 animate-bounce">
@@ -471,7 +505,6 @@
                             </div>
 
                             <div className="p-6">
-                                {/* 提示進度條 */}
                                 <div className="flex justify-center gap-2 mb-6">
                                     {[0, 1, 2].map((s) => (
                                         <div 
@@ -487,8 +520,6 @@
                                 </div>
 
                                 {renderControls()}
-                                {/* 只有在未播放時才顯示播放按鈕 */}
-                                {!isVideoPlaying && <PlayVideoButton />}
                             </div>
                         </div>
                         
@@ -497,17 +528,6 @@
                                 提示：根據畫面上的照片，讓大家猜猜看是誰，猜不出來就按提示！
                             </div>
                         )}
-                        
-                        {/* 影片播放器 - 浮動在右下角 */}
-                        {isVideoPlaying && (
-                            <YouTubePlayer 
-                                videoId={YOUTUBE_VIDEO_ID} 
-                                title={YOUTUBE_VIDEO_TITLE}
-                                isMinimized={isVideoMinimized}
-                                setIsMinimized={setIsVideoMinimized}
-                                setIsPlaying={setIsVideoPlaying} // 用於關閉播放器
-                            />
-                        )}
                     </div>
                 );
             };
@@ -515,6 +535,57 @@
             return (
                 <React.Fragment>
                     {renderScreen()}
+
+                    {/* Floating YouTube Player */}
+                    {isPlayerActive && (
+                        <div className={`fixed z-[100] transition-all duration-300 ${
+                            isPlayerMinimized 
+                                ? 'bottom-4 right-4 w-80 h-auto' 
+                                : 'inset-0 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm'
+                        }`}>
+                            <div className={`rounded-xl shadow-2xl overflow-hidden bg-gray-900 transition-all duration-300 ${
+                                isPlayerMinimized 
+                                    ? 'w-full' 
+                                    : 'w-full max-w-4xl'
+                            }`}>
+                                {/* Header/Controls */}
+                                <div className="flex justify-between items-center p-2 bg-gray-800 text-white">
+                                    <span className="text-sm font-semibold truncate">
+                                        {isPlayerMinimized ? '影片 (播放中)' : 'Youtube 影片播放'}
+                                    </span>
+                                    <div>
+                                        <button
+                                            onClick={() => setIsPlayerMinimized(!isPlayerMinimized)}
+                                            className="p-1.5 rounded-full hover:bg-gray-700 transition mx-1"
+                                            title={isPlayerMinimized ? "放大" : "縮小到角落"}
+                                        >
+                                            {isPlayerMinimized ? <ChevronsUp size={20} /> : <ChevronsDown size={20} />}
+                                        </button>
+                                        <button
+                                            onClick={handleCloseVideo}
+                                            className="p-1.5 rounded-full hover:bg-red-600 transition"
+                                            title="關閉播放器"
+                                        >
+                                            <X size={20} />
+                                        </button>
+                                    </div>
+                                </div>
+
+                                {/* IFrame Container (to maintain 16:9 aspect ratio) */}
+                                <div className="relative" style={{ paddingBottom: '56.25%', height: 0 }}>
+                                    <iframe
+                                        className="absolute top-0 left-0 w-full h-full"
+                                        src={videoUrl}
+                                        title="YouTube video player"
+                                        frameBorder="0"
+                                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                                        referrerPolicy="strict-origin-when-cross-origin"
+                                        allowFullScreen
+                                    ></iframe>
+                                </div>
+                            </div>
+                        </div>
+                    )}
                 </React.Fragment>
             );
         };
